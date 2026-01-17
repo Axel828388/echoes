@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="theme-color" content="#0b0d24" />
+		<title>☆Ecos de ti☆</title>
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+		<div id="app" aria-label="☆Ecos de ti☆">
+			<canvas id="bg" aria-hidden="true"></canvas>
+
+			<!-- Overlays -->
+			<div id="darkness"></div>
+			<div id="fade" class="fade-overlay"></div>
+
+			<!-- INTRO (sin HUD) -->
+			<section id="introScreen" class="layer intro">
+				<div class="introCard" role="region" aria-label="Pantalla inicial">
+					<h1 class="title">☆Ecos de ti☆</h1>
+					<p class="subtitle">Un lugar pequeño para volver a ti, con calma.</p>
+					<button id="startBtn" class="primaryBtn" type="button" aria-label="Comenzar">
+						Comenzar
+					</button>
+				</div>
+			</section>
+
+			<!-- WORLD -->
+			<section id="worldScreen" class="layer hidden" role="region" aria-label="Mundo">
+				<div class="worldWrap" role="application" aria-label="Escenario interactivo">
+					<div class="worldDecor" aria-hidden="true">
+						<div class="softGlow g1"></div>
+						<div class="softGlow g2"></div>
+						<div class="softGlow g3"></div>
+					</div>
+
+					<div class="hud" aria-label="Progreso y audio">
+						<div class="hudCard">
+							<span id="progressText">Has descubierto 0 de 9 recuerdos</span>
+						</div>
+						<button id="diaryBtn" class="hudBtn" type="button" aria-label="Abrir diario">
+							Diario
+						</button>
+						<button id="finalBtn" class="hudBtn hidden" type="button" aria-label="Abrir final">
+							Final
+						</button>
+						<button id="muteBtn" class="iconBtn" type="button" aria-label="Silenciar" aria-pressed="false">
+							🔈
+						</button>
+					</div>
+
+					<div class="map" aria-hidden="false">
+						<!-- Objetos interactivos (posiciones fijas, sin scroll largo) -->
+						<div class="interactive" data-obj="flower" style="left: 10%; top: 62%;" role="button" aria-label="Flor" tabindex="0">
+							<div class="glyph">✿</div>
+						</div>
+						<div class="interactive" data-obj="star" style="left: 22%; top: 22%;" role="button" aria-label="Estrella" tabindex="0">
+							<div class="glyph">✦</div>
+						</div>
+						<div class="interactive" data-obj="letter" style="left: 46%; top: 18%;" role="button" aria-label="Carta" tabindex="0">
+							<div class="glyph">✉</div>
+						</div>
+						<div class="interactive" data-obj="light" style="left: 68%; top: 26%;" role="button" aria-label="Luz" tabindex="0">
+							<div class="glyph">❋</div>
+						</div>
+						<div class="interactive" data-obj="butterfly" style="left: 80%; top: 58%;" role="button" aria-label="Mariposa" tabindex="0">
+							<div class="glyph">❀</div>
+						</div>
+						<div class="interactive" data-obj="moon" style="left: 56%; top: 46%;" role="button" aria-label="Luna" tabindex="0">
+							<div class="glyph">☾</div>
+						</div>
+						<div class="interactive" data-obj="ribbon" style="left: 32%; top: 72%;" role="button" aria-label="Cinta" tabindex="0">
+							<div class="glyph">⟡</div>
+						</div>
+						<div class="interactive" data-obj="spark" style="left: 44%; top: 56%;" role="button" aria-label="Chispa" tabindex="0">
+							<div class="glyph">✧</div>
+						</div>
+						<div class="interactive" data-obj="seal" style="left: 62%; top: 74%;" role="button" aria-label="Sello" tabindex="0">
+							<div class="glyph">✶</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- Diary (pages) -->
+			<section id="diaryScreen" class="overlay hidden" role="dialog" aria-label="Diario" aria-modal="true">
+				<div class="overlayBackdrop" data-close="diary"></div>
+				<div class="overlayCard" role="document">
+					<div class="overlayTop">
+						<div class="overlayTitle">Diario</div>
+						<button id="diaryCloseBtn" class="iconBtn" type="button" aria-label="Cerrar diario">×</button>
+					</div>
+					<div class="diaryPage" aria-live="polite" aria-atomic="true">
+						<div id="diaryMeta" class="diaryMeta">Página 0 / 0</div>
+						<div id="diaryText" class="diaryText">Aún no has desbloqueado frases. Vuelve al mapa y toca un objeto.</div>
+					</div>
+					<div class="overlayBottom">
+						<button id="diaryPrevBtn" class="secondaryBtn" type="button">Anterior</button>
+						<button id="diaryNextBtn" class="secondaryBtn" type="button">Siguiente</button>
+					</div>
+				</div>
+			</section>
+
+			<!-- Mini-game overlay (simple, gentle) -->
+			<section id="miniGameScreen" class="overlay hidden" role="dialog" aria-label="Recuerdo" aria-modal="true">
+				<div class="overlayBackdrop" data-close="mini"></div>
+				<div class="overlayCard" role="document">
+					<div class="overlayTop">
+						<div id="miniGameTitle" class="overlayTitle">Un recuerdo</div>
+						<button id="miniGameCloseBtn" class="iconBtn" type="button" aria-label="Cerrar">×</button>
+					</div>
+					<div id="miniGameHint" class="miniHint">Toca con calma.</div>
+					<div id="miniGameArea" class="miniArea"></div>
+				</div>
+			</section>
+
+			<!-- Completion prompt (after 9/9) -->
+			<section id="completeScreen" class="overlay hidden" role="dialog" aria-label="Final disponible" aria-modal="true">
+				<div class="overlayBackdrop" data-close="complete"></div>
+				<div class="overlayCard" role="document">
+					<div class="overlayTop">
+						<div class="overlayTitle">Ya están todos</div>
+						<button id="completeCloseBtn" class="iconBtn" type="button" aria-label="Cerrar">×</button>
+					</div>
+					<div class="completeBody">
+						<div class="completeText">Si quieres, puedes abrir el final cuando estés lista.</div>
+					</div>
+					<div class="overlayBottom">
+						<button id="completeStayBtn" class="secondaryBtn" type="button">Quedarme aquí</button>
+						<button id="completeGoBtn" class="primaryBtn" type="button">Ver final</button>
+					</div>
+				</div>
+			</section>
+
+			<!-- Floating non-blocking messages -->
+			<div id="messageLayer" aria-live="polite" aria-atomic="true">
+				<div id="messageBox" class="messageBox">
+					<p id="messageText" class="messageText"></p>
+				</div>
+			</div>
+
+			<!-- FINAL -->
+			<section id="finalScreen" class="layer hidden" role="region" aria-label="Final">
+				<div class="finalWrap">
+					<button id="finalCloseBtn" class="iconBtn finalClose" type="button" aria-label="Cerrar">×</button>
+					<div class="player" role="group" aria-label="Reproductor">
+						<div class="playerArt" aria-hidden="true">
+							<img id="playerArtImg" class="playerArtImg" alt="" aria-hidden="true" />
+						</div>
+						<div class="playerMeta">
+							<div id="playerTitle" class="playerTitle">Beautiful</div>
+							<div id="playerArtist" class="playerArtist">BTS</div>
+						</div>
+						<div class="playerControls" aria-label="Controles">
+							<button id="playerPrev" class="playerIconBtn" type="button" aria-label="Anterior" disabled>⏮</button>
+							<button id="playerPlay" class="playerPlayBtn" type="button" aria-label="Reproducir / pausar" aria-pressed="false">▶</button>
+							<button id="playerNext" class="playerIconBtn" type="button" aria-label="Siguiente" disabled>⏭</button>
+						</div>
+						<div class="playerWave" aria-hidden="true">
+							<span></span><span></span><span></span><span></span><span></span><span></span>
+							<span></span><span></span><span></span><span></span><span></span><span></span>
+							<span></span><span></span><span></span><span></span><span></span><span></span>
+							<span></span><span></span><span></span><span></span><span></span><span></span>
+						</div>
+						<div class="playerProgress" aria-label="Progreso">
+							<span id="playerTime" class="playerTime" aria-hidden="true">0:00</span>
+							<input id="playerSeek" class="playerSeek" type="range" min="0" max="100" value="0" step="0.1" aria-label="Buscar" />
+							<span id="playerDur" class="playerTime" aria-hidden="true">0:00</span>
+						</div>
+					</div>
+					<h2 class="finalTitle">Para ti</h2>
+					<div id="finalParagraphs"></div>
+				</div>
+
+				<button id="muteBtnFinal" class="iconBtn finalMute" type="button" aria-label="Silenciar" aria-pressed="false">
+					🔈
+				</button>
+			</section>
+
+			<!-- Audio (offline, archivos locales) -->
+			<audio id="audioAmbient" preload="auto">
+				<source src="4 O'clock Instrumental.m4a" type="audio/mp4" />
+			</audio>
+			<audio id="audioFinal" preload="auto">
+				<source src="Beautiful - BTS.m4a" type="audio/mp4" />
+			</audio>
+		</div>
+
+		<script src="game.js"></script>
+	</body>
+</html>
