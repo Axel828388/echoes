@@ -264,6 +264,26 @@
       upd("final");
     }
 
+    /**
+     * Chrome móvil a veces pausa el audio (power saver / glitches). Reintentamos
+     * reanudar de forma silenciosa si debería estar sonando.
+     */
+    ensurePlayback() {
+      if (!this.enabled) return;
+      if (this.muted) return;
+      if (this.masterVolume <= 0.0001) return;
+
+      const needAmbient = (this._base.ambient * this.masterVolume) > 0.0005 || (this._fades.ambient.active && this._fades.ambient.to > 0.0005);
+      const needFinal = (this._base.final * this.masterVolume) > 0.0005 || (this._fades.final.active && this._fades.final.to > 0.0005);
+
+      if (needAmbient && this.ambient.paused) {
+        this.ambient.play().catch(() => {});
+      }
+      if (needFinal && this.final.paused) {
+        this.final.play().catch(() => {});
+      }
+    }
+
     _ensureAudioContext() {
       if (this._ctx) return;
       try {
@@ -1219,6 +1239,8 @@
       this._playerRaf = 0;
       this._isSeeking = false;
 
+      this._audioWatchdogAt = 0;
+
       this.audioAmbient = /** @type {HTMLAudioElement} */ (document.getElementById("audioAmbient"));
       this.audioFinal = /** @type {HTMLAudioElement} */ (document.getElementById("audioFinal"));
 
@@ -1343,6 +1365,18 @@
       this.worldScreen.addEventListener("pointerdown", () => {
         if (!this.state.audioUnlocked) unlock();
       }, { passive: true });
+
+      const nudgeAudio = () => {
+        if (!this.state.audioUnlocked) return;
+        if (this.state.audioMuted) return;
+        this.audio.ensurePlayback();
+      };
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") nudgeAudio();
+      });
+      window.addEventListener("focus", nudgeAudio);
+      window.addEventListener("pageshow", nudgeAudio);
 
       const toggleMute = async () => {
         // si aún no se desbloqueó, el click del botón cuenta como gesto.
@@ -1920,6 +1954,14 @@
 
           // Audio
           this.audio.update();
+
+          // Watchdog: reintenta audio si Chrome lo pausa.
+          if (this.state.audioUnlocked && !this.state.audioMuted) {
+            if (t - this._audioWatchdogAt > 2500) {
+              this._audioWatchdogAt = t;
+              this.audio.ensurePlayback();
+            }
+          }
 
           // Mini-games
           this.miniGames.update(t);

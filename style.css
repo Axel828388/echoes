@@ -332,7 +332,11 @@ button {
 
 .interactive .glyph {
   font-size: 22px;
-  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.4));
+  text-shadow: 0 8px 18px rgba(0, 0, 0, 0.40);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  font-variant-emoji: text;
 }
 
 .interactive.discovered {
