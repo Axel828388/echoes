@@ -45,6 +45,10 @@
 						<button id="finalBtn" class="hudBtn hidden" type="button" aria-label="Abrir final">
 							Final
 						</button>
+						<div class="volControl" role="group" aria-label="Volumen">
+							<span class="volIcon" aria-hidden="true">♫</span>
+							<input id="volumeSlider" class="volumeSlider" type="range" min="0" max="100" value="100" step="1" aria-label="Volumen de música" />
+						</div>
 						<button id="muteBtn" class="iconBtn" type="button" aria-label="Silenciar" aria-pressed="false">
 							🔈
 						</button>
@@ -168,6 +172,10 @@
 							<input id="playerSeek" class="playerSeek" type="range" min="0" max="100" value="0" step="0.1" aria-label="Buscar" />
 							<span id="playerDur" class="playerTime" aria-hidden="true">0:00</span>
 						</div>
+					</div>
+					<div class="playerVolume" role="group" aria-label="Volumen">
+						<span class="volIcon" aria-hidden="true">♫</span>
+						<input id="volumeSliderFinal" class="volumeSlider" type="range" min="0" max="100" value="100" step="1" aria-label="Volumen de música" />
 					</div>
 					<h2 class="finalTitle">Para ti</h2>
 					<div id="finalParagraphs"></div>

@@ -11,6 +11,14 @@
   --accent3: rgba(255, 188, 214, 0.95);
   --shadow: rgba(0, 0, 0, 0.45);
 
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable", "Segoe UI", Roboto, "Noto Sans", Arial, "Helvetica Neue", sans-serif;
+  --font-display: ui-rounded, "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, Roboto, "Noto Sans", Arial, "Helvetica Neue", sans-serif;
+
+  --text-xs: clamp(12px, 3.2vw, 13px);
+  --text-sm: clamp(13px, 3.4vw, 14px);
+  --text-md: clamp(15px, 3.9vw, 16px);
+  --text-lg: clamp(17px, 4.4vw, 18px);
+
   --radius-xl: 22px;
   --radius-lg: 18px;
   --radius-md: 14px;
@@ -25,10 +33,20 @@
 html, body {
   height: 100%;
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: 1.55;
   background: radial-gradient(1200px 900px at 50% 20%, #17103a 0%, var(--bg1) 45%, var(--bg0) 100%);
   color: var(--ink);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: 0.1px;
+}
+
+h1, h2, .title, .finalTitle, .overlayTitle {
+  font-family: var(--font-display);
 }
 
 button {
@@ -218,6 +236,52 @@ button {
   backdrop-filter: blur(10px);
   color: rgba(255, 255, 255, 0.88);
   font-size: 13px;
+}
+
+.volControl {
+  height: 42px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(10, 8, 20, 0.28);
+  backdrop-filter: blur(10px);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.volIcon {
+  font-size: 14px;
+  opacity: 0.85;
+  user-select: none;
+}
+
+.volumeSlider {
+  width: 140px;
+  max-width: 38vw;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  outline: none;
+}
+
+.volumeSlider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(231, 181, 255, 0.86);
+}
+
+.volumeSlider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(231, 181, 255, 0.86);
 }
 
 .iconBtn {
@@ -523,8 +587,22 @@ button {
 }
 
 .node.on {
-  border-color: rgba(231, 181, 255, 0.34);
-  background: radial-gradient(circle at 35% 30%, rgba(231, 181, 255, 0.30), rgba(10, 8, 20, 0.12));
+  border-color: rgba(231, 181, 255, 0.58);
+  background: radial-gradient(circle at 35% 30%, rgba(231, 181, 255, 0.44), rgba(10, 8, 20, 0.12));
+  box-shadow:
+    0 0 0 1px rgba(231, 181, 255, 0.16) inset,
+    0 26px 110px rgba(231, 181, 255, 0.26),
+    0 10px 40px rgba(0, 0, 0, 0.34);
+}
+
+.node.on::after {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 45%, rgba(231, 181, 255, 0.30), rgba(0, 0, 0, 0) 64%);
+  opacity: 1;
+  pointer-events: none;
 }
 
 .butterfly {
@@ -824,6 +902,67 @@ button {
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 900ms ease-in-out, transform 900ms ease-in-out;
+}
+
+.playerVolume {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(10, 8, 20, 0.22);
+  backdrop-filter: blur(10px);
+  margin: 0 auto 10px;
+}
+
+@media (max-width: 520px) {
+  .hud {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    grid-template-areas:
+      "progress progress progress progress"
+      "diary final volume mute";
+    gap: 8px;
+    align-items: center;
+  }
+
+  .hudCard {
+    grid-area: progress;
+    width: 100%;
+  }
+
+  #diaryBtn { grid-area: diary; }
+  #finalBtn { grid-area: final; }
+  #muteBtn { grid-area: mute; }
+  .volControl {
+    grid-area: volume;
+    height: 40px;
+    padding: 0 8px;
+    background: rgba(10, 8, 20, 0.18);
+    border-color: rgba(255, 255, 255, 0.08);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .volIcon { display: none; }
+
+  .volumeSlider {
+    width: 100%;
+    max-width: none;
+  }
+
+  .volumeSlider::-webkit-slider-thumb,
+  .playerSeek::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+  }
+
+  .volumeSlider::-moz-range-thumb,
+  .playerSeek::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 .finalParagraph.on {

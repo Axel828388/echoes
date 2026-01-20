@@ -45,11 +45,12 @@
     load() {
       try {
         const raw = localStorage.getItem(this.storageKey);
-        if (!raw) return { discoveredIds: [], muted: false, assignedPhrases: {}, unlockedOrder: [], seenFinal: false };
+        if (!raw) return { discoveredIds: [], muted: false, volume: 1, assignedPhrases: {}, unlockedOrder: [], seenFinal: false };
         const parsed = JSON.parse(raw);
         return {
           discoveredIds: Array.isArray(parsed.discoveredIds) ? parsed.discoveredIds : [],
           muted: !!parsed.muted,
+          volume: typeof parsed.volume === "number" ? clamp01(parsed.volume) : 1,
           assignedPhrases: parsed && typeof parsed.assignedPhrases === "object" && parsed.assignedPhrases
             ? parsed.assignedPhrases
             : {},
@@ -57,7 +58,7 @@
           seenFinal: !!parsed.seenFinal,
         };
       } catch {
-        return { discoveredIds: [], muted: false, assignedPhrases: {}, unlockedOrder: [], seenFinal: false };
+        return { discoveredIds: [], muted: false, volume: 1, assignedPhrases: {}, unlockedOrder: [], seenFinal: false };
       }
     }
 
@@ -81,6 +82,9 @@
 
       this.enabled = false; // se activa tras gesto del usuario
       this.muted = false;
+
+      this.masterVolume = 1;
+      this._base = { ambient: 0, final: 0 };
 
       // Volúmenes bajos: acompañan, no dominan.
       this._targetAmbient = 0.14;
@@ -120,6 +124,22 @@
         try { this.ambient.pause(); } catch {}
         try { this.final.pause(); } catch {}
       }
+    }
+
+    setMasterVolume(v) {
+      this.masterVolume = clamp01(v);
+      if (!this.enabled) return;
+      if (this.muted) return;
+      this.ambient.volume = clamp01(this._base.ambient * this.masterVolume);
+      this.final.volume = clamp01(this._base.final * this.masterVolume);
+    }
+
+    _getBase(which) {
+      if (this.masterVolume > 0.0001) {
+        const cur = which === "ambient" ? this.ambient.volume : this.final.volume;
+        return clamp01(cur / this.masterVolume);
+      }
+      return this._base[which] || 0;
     }
 
     /**
@@ -176,8 +196,8 @@
       }
 
       // Crossfade: bajar ambiente, subir final
-      this._startFade("ambient", this.ambient.volume, 0.0, 2600);
-      this._startFade("final", this.final.volume, this._targetFinal, 2600);
+      this._startFade("ambient", this._getBase("ambient"), 0.0, 2600);
+      this._startFade("final", this._getBase("final"), this._targetFinal, 2600);
     }
 
     /** Vuelve al ambiente con crossfade suave. */
@@ -192,8 +212,8 @@
         return;
       }
 
-      this._startFade("final", this.final.volume, 0.0, 2200);
-      this._startFade("ambient", this.ambient.volume, this._targetAmbient, 2200);
+      this._startFade("final", this._getBase("final"), 0.0, 2200);
+      this._startFade("ambient", this._getBase("ambient"), this._targetAmbient, 2200);
     }
 
     _startFade(which, from, to, dur) {
@@ -222,9 +242,11 @@
         const f = this._fades[which];
         if (!f.active) return;
         const t = clamp01((tNow - f.start) / f.dur);
-        const v = lerp(f.from, f.to, easeInOut(t));
-        if (which === "ambient") this.ambient.volume = v;
-        if (which === "final") this.final.volume = v;
+        const base = lerp(f.from, f.to, easeInOut(t));
+        this._base[which] = base;
+        const applied = clamp01(base * this.masterVolume);
+        if (which === "ambient") this.ambient.volume = applied;
+        if (which === "final") this.final.volume = applied;
 
         if (t >= 1) {
           f.active = false;
@@ -587,7 +609,8 @@
       this._order = indices.slice();
       this._progress = 0;
       this._showing = true;
-      this._phaseStart = nowMs();
+      // Pausa previa para que el patrón sea más claro.
+      this._phaseStart = nowMs() + 1300;
       this._readyAt = 0;
       this._flashUntil.clear();
       this._lastPressAt = 0;
@@ -654,9 +677,14 @@
       if (!this._mounted) return;
 
       if (this._showing) {
+        // Pre-start: mantener todo apagado.
+        if (t < this._phaseStart) {
+          for (const n of this._nodes) n.el.classList.remove("on");
+          return;
+        }
         // Más lento y legible: encendido un rato + pausa.
-        const onMs = 700;
-        const gapMs = 420;
+        const onMs = 980;
+        const gapMs = 620;
         const stepMs = onMs + gapMs;
         const elapsed = t - this._phaseStart;
         const step = Math.floor(elapsed / stepMs);
@@ -674,7 +702,7 @@
           this._showing = false;
           this._phaseStart = t;
           // Pequeña pausa antes de permitir input.
-          this._readyAt = t + 650;
+          this._readyAt = t + 1500;
           this._flashUntil.clear();
           for (const n of this._nodes) n.el.classList.remove("on");
 
@@ -1156,6 +1184,8 @@
       this.startBtn = /** @type {HTMLButtonElement} */ (document.getElementById("startBtn"));
       this.muteBtn = /** @type {HTMLButtonElement} */ (document.getElementById("muteBtn"));
       this.muteBtnFinal = /** @type {HTMLButtonElement} */ (document.getElementById("muteBtnFinal"));
+      this.volumeSlider = /** @type {HTMLInputElement | null} */ (document.getElementById("volumeSlider"));
+      this.volumeSliderFinal = /** @type {HTMLInputElement | null} */ (document.getElementById("volumeSliderFinal"));
       this.diaryBtn = /** @type {HTMLButtonElement} */ (document.getElementById("diaryBtn"));
       this.finalBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById("finalBtn"));
       this.progressText = /** @type {HTMLElement} */ (document.getElementById("progressText"));
@@ -1352,6 +1382,18 @@
 
       this.muteBtn.addEventListener("click", toggleMute);
       this.muteBtnFinal.addEventListener("click", toggleMute);
+
+      const applyVolumeFrom = (el) => {
+        if (!el) return;
+        const v = clamp01((Number(el.value) || 0) / 100);
+        this.audio.setMasterVolume(v);
+        if (this.volumeSlider && this.volumeSlider !== el) this.volumeSlider.value = String(Math.round(v * 100));
+        if (this.volumeSliderFinal && this.volumeSliderFinal !== el) this.volumeSliderFinal.value = String(Math.round(v * 100));
+        this._persist();
+      };
+
+      this.volumeSlider?.addEventListener("input", () => applyVolumeFrom(this.volumeSlider));
+      this.volumeSliderFinal?.addEventListener("input", () => applyVolumeFrom(this.volumeSliderFinal));
 
       this.diaryBtn.addEventListener("click", async () => {
         if (!this.state.audioUnlocked) {
@@ -1712,6 +1754,7 @@
       this.storage.save({
         discoveredIds: Array.from(this.state.discovered),
         muted: this.state.audioMuted,
+        volume: this.audio.masterVolume,
         assignedPhrases,
         unlockedOrder: this.unlockedOrder.slice(),
         seenFinal: this.seenFinal,
@@ -1722,6 +1765,11 @@
       const saved = this.storage.load();
       this.state.audioMuted = saved.muted;
       this.audio.setMuted(this.state.audioMuted);
+
+      this.audio.setMasterVolume(typeof saved.volume === "number" ? saved.volume : 1);
+      const volUi = String(Math.round(this.audio.masterVolume * 100));
+      if (this.volumeSlider) this.volumeSlider.value = volUi;
+      if (this.volumeSliderFinal) this.volumeSliderFinal.value = volUi;
 
       // Restaurar asignación de frases por objeto (para no cambiar con recargas).
       if (saved.assignedPhrases && typeof saved.assignedPhrases === "object") {
