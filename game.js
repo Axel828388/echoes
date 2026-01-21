@@ -146,7 +146,7 @@
      * Debe llamarse solo tras interacción del usuario (click/touch).
      */
     async unlockAndStartAmbient() {
-      if (this.enabled) return;
+      if (this.enabled) return true;
       this.enabled = true;
 
       this._ensureAudioContext();
@@ -154,10 +154,14 @@
       if (this.muted) return;
 
       try {
+        this.ambient.muted = false;
         await this.ambient.play();
         this._startFade("ambient", 0, this._targetAmbient, 2000);
+        return true;
       } catch {
         // Si el navegador bloquea (raro tras gesto), no hacemos nada.
+        this.enabled = false;
+        return false;
       }
     }
 
@@ -166,7 +170,7 @@
      * Útil si el usuario abre el juego ya completo (escena final).
      */
     async unlockAndStartFinal() {
-      if (this.enabled) return;
+      if (this.enabled) return true;
       this.enabled = true;
 
       this._ensureAudioContext();
@@ -174,10 +178,14 @@
       if (this.muted) return;
 
       try {
+        this.final.muted = false;
         await this.final.play();
         this._startFade("final", 0, this._targetFinal, 2400);
+        return true;
       } catch {
         // Si falla, no hacemos nada.
+        this.enabled = false;
+        return false;
       }
     }
 
@@ -1340,12 +1348,13 @@
     _wire() {
       // Gesto de usuario: desbloquea audio (autoplay restrictions)
       const unlock = async () => {
-        this.state.audioUnlocked = true;
+        let ok = false;
         if (this.state.scene === "final") {
-          await this.audio.unlockAndStartFinal();
+          ok = await this.audio.unlockAndStartFinal();
         } else {
-          await this.audio.unlockAndStartAmbient();
+          ok = await this.audio.unlockAndStartAmbient();
         }
+        this.state.audioUnlocked = !!ok;
       };
 
       this.startBtn.addEventListener("click", async () => {
@@ -1381,12 +1390,7 @@
       const toggleMute = async () => {
         // si aún no se desbloqueó, el click del botón cuenta como gesto.
         if (!this.state.audioUnlocked) {
-          this.state.audioUnlocked = true;
-          if (this.state.scene === "final") {
-            await this.audio.unlockAndStartFinal();
-          } else {
-            await this.audio.unlockAndStartAmbient();
-          }
+          await unlock();
         }
 
         this.state.audioMuted = !this.state.audioMuted;
@@ -1431,8 +1435,7 @@
 
       this.diaryBtn.addEventListener("click", async () => {
         if (!this.state.audioUnlocked) {
-          this.state.audioUnlocked = true;
-          await this.audio.unlockAndStartAmbient();
+          await unlock();
         }
         this.diary.open();
       });
@@ -1451,8 +1454,7 @@
       this.completeGoBtn.addEventListener("click", async () => {
         // El botón cuenta como gesto, por si el usuario estaba con audio bloqueado.
         if (!this.state.audioUnlocked) {
-          this.state.audioUnlocked = true;
-          await this.audio.unlockAndStartAmbient();
+          await unlock();
         }
 
         this.seenFinal = true;
@@ -1485,9 +1487,7 @@
 
         // Cuenta como gesto para audio.
         if (!this.state.audioUnlocked) {
-          this.state.audioUnlocked = true;
-          if (this.state.scene === "final") await this.audio.unlockAndStartFinal();
-          else await this.audio.unlockAndStartAmbient();
+          await unlock();
         }
 
         if (this.state.audioMuted) return;
