@@ -34,6 +34,23 @@
   }
 
   // ----------------------------
+  // Haptics (Vibration API)
+  // ----------------------------
+
+  function haptic(pattern) {
+    try {
+      if (prefersReducedMotion()) return;
+      // @ts-ignore
+      if (!navigator || typeof navigator.vibrate !== "function") return;
+      if (document.visibilityState && document.visibilityState !== "visible") return;
+      // @ts-ignore
+      navigator.vibrate(pattern);
+    } catch {
+      // Silencioso: no todos los navegadores soportan vibración.
+    }
+  }
+
+  // ----------------------------
   // StorageManager
   // ----------------------------
 
@@ -1457,6 +1474,8 @@
           await unlock();
         }
 
+        haptic([16, 22, 16]);
+
         this.seenFinal = true;
         this._persist();
         this._closeCompletion();
@@ -1724,6 +1743,9 @@
       if (this.diary.isOpen() || this.miniGames.isOpen()) return;
       if (!this.completeScreen.classList.contains("hidden")) return;
 
+      // Feedback sutil al tocar un objeto.
+      haptic(10);
+
       obj.playInteractAnim();
 
       if (!obj.discovered) {
@@ -1739,12 +1761,16 @@
         this._persist();
         this.audio.playChime();
 
+        // Feedback de éxito al desbloquear.
+        haptic([18, 26, 18]);
+
         this.messages.show(phrase, { holdMs: 2800 });
         this._updateProgressUi();
         this._updateDiaryUi();
         this._updateFinalBtnUi();
 
         if (this.state.isComplete()) {
+          haptic([26, 40, 26, 60, 26]);
           this._openCompletion();
         }
       } else {
