@@ -63,7 +63,7 @@
       try {
         // Wipe progress exactly once for everyone on this release.
         // This intentionally does NOT repeat on subsequent loads.
-        const resetOnceKey = `${this.storageKey}__reset_once_2026_01`;
+        const resetOnceKey = `${this.storageKey}__reset_once_2026_01_20`;
         if (!localStorage.getItem(resetOnceKey)) {
           // Mark first, then wipe everything else (so it won't repeat).
           localStorage.setItem(resetOnceKey, "1");
