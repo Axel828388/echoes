@@ -61,6 +61,14 @@
 
     load() {
       try {
+        // Wipe progress exactly once for everyone on this release.
+        // This intentionally does NOT repeat on subsequent loads.
+        const resetOnceKey = `${this.storageKey}__reset_once_2026_01`;
+        if (!localStorage.getItem(resetOnceKey)) {
+          localStorage.removeItem(this.storageKey);
+          localStorage.setItem(resetOnceKey, "1");
+        }
+
         const raw = localStorage.getItem(this.storageKey);
         if (!raw) return { discoveredIds: [], muted: false, volume: 1, assignedPhrases: {}, unlockedOrder: [], seenFinal: false };
         const parsed = JSON.parse(raw);
@@ -374,10 +382,22 @@
       this._index = 0;
       this._open = false;
 
-      this.prevBtn.addEventListener("click", () => this.prev());
-      this.nextBtn.addEventListener("click", () => this.next());
-      this.closeBtn.addEventListener("click", () => this.close());
-      this.backdropEl.addEventListener("click", () => this.close());
+      this.prevBtn.addEventListener("click", () => {
+        haptic(8);
+        this.prev();
+      });
+      this.nextBtn.addEventListener("click", () => {
+        haptic(8);
+        this.next();
+      });
+      this.closeBtn.addEventListener("click", () => {
+        haptic(10);
+        this.close();
+      });
+      this.backdropEl.addEventListener("click", () => {
+        haptic(10);
+        this.close();
+      });
     }
 
     setPhrases(phrases) {
@@ -465,6 +485,7 @@
       const cancel = () => {
         // Evita que el mismo tap que abre el mini-juego lo cierre inmediatamente.
         if (this._openedAt && nowMs() - this._openedAt < 280) return;
+        haptic(10);
         this._finish(false);
       };
 
@@ -564,6 +585,7 @@
         try { e.preventDefault?.(); } catch {}
         this._holding = true;
         this._holdStart = nowMs();
+        haptic(8);
       };
       const up = (e) => {
         try { e.preventDefault?.(); } catch {}
@@ -685,6 +707,8 @@
           // Evita doble disparo (touchstart + click, etc.).
           if (tNow - this._lastPressAt < 240) return;
           this._lastPressAt = tNow;
+
+          haptic(8);
 
           // Feedback visual: iluminar al tocar.
           this._flashUntil.set(idx, tNow + 260);
@@ -819,6 +843,9 @@
           try { e.preventDefault?.(); } catch {}
           if (!this._mounted) return;
           if (!b.alive) return;
+
+          haptic(8);
+
           b.alive = false;
           this._caught++;
           el.classList.add("gone");
@@ -1375,6 +1402,7 @@
       };
 
       this.startBtn.addEventListener("click", async () => {
+        haptic(12);
         await unlock();
         await this.sceneManager.transitionTo("world");
         this.state.scene = "world";
@@ -1405,6 +1433,7 @@
       window.addEventListener("pageshow", nudgeAudio);
 
       const toggleMute = async () => {
+        haptic(10);
         // si aún no se desbloqueó, el click del botón cuenta como gesto.
         if (!this.state.audioUnlocked) {
           await unlock();
@@ -1450,20 +1479,31 @@
       this.volumeSlider?.addEventListener("input", () => applyVolumeFrom(this.volumeSlider));
       this.volumeSliderFinal?.addEventListener("input", () => applyVolumeFrom(this.volumeSliderFinal));
 
+      // Haptic only on commit/release (avoid vibrating continuously while sliding).
+      this.volumeSlider?.addEventListener("change", () => haptic(8));
+      this.volumeSliderFinal?.addEventListener("change", () => haptic(8));
+      this.volumeSlider?.addEventListener("pointerdown", () => haptic(8), { passive: true });
+      this.volumeSliderFinal?.addEventListener("pointerdown", () => haptic(8), { passive: true });
+
       this.diaryBtn.addEventListener("click", async () => {
         if (!this.state.audioUnlocked) {
           await unlock();
         }
+        haptic(10);
         this.diary.open();
       });
 
       this.finalBtn?.addEventListener("click", () => {
         if (this.state.scene !== "world") return;
         if (!this.state.isComplete()) return;
+        haptic(10);
         this._openCompletion();
       });
 
-      const closeCompletion = () => this._closeCompletion();
+      const closeCompletion = () => {
+        haptic(10);
+        this._closeCompletion();
+      };
       this.completeBackdrop.addEventListener("click", closeCompletion);
       this.completeCloseBtn.addEventListener("click", closeCompletion);
       this.completeStayBtn.addEventListener("click", closeCompletion);
@@ -1485,6 +1525,8 @@
       this.finalCloseBtn?.addEventListener("click", async () => {
         if (this.state.scene !== "final") return;
 
+        haptic(10);
+
         this.sceneManager.setDarkness(false);
         await this.sceneManager.transitionTo("world");
         this.state.scene = "world";
@@ -1502,6 +1544,7 @@
 
       // Player controls
       this.playerPlayBtn?.addEventListener("click", async () => {
+        haptic(10);
         const el = this.state.scene === "final" ? this.audioFinal : this.audioAmbient;
 
         // Cuenta como gesto para audio.
@@ -1528,6 +1571,7 @@
       });
 
       this.playerSeek?.addEventListener("change", () => {
+        haptic(8);
         const el = this.state.scene === "final" ? this.audioFinal : this.audioAmbient;
         const dur = Number.isFinite(el.duration) ? el.duration : 0;
         const v = this.playerSeek ? Number(this.playerSeek.value) : 0;
