@@ -37,16 +37,38 @@
   // Haptics (Vibration API)
   // ----------------------------
 
+  let _lastHapticAt = 0;
   function haptic(pattern) {
     try {
-      if (prefersReducedMotion()) return;
+      // Nota: iOS/Safari no soporta navigator.vibrate().
+      if (prefersReducedMotion()) return false;
+      if (document.visibilityState && document.visibilityState !== "visible") return false;
       // @ts-ignore
-      if (!navigator || typeof navigator.vibrate !== "function") return;
-      if (document.visibilityState && document.visibilityState !== "visible") return;
+      if (!navigator || typeof navigator.vibrate !== "function") return false;
+
+      // Evita spam (muchos vibrates seguidos pueden ser ignorados por el navegador/OS).
+      const t = nowMs();
+      if (t - _lastHapticAt < 70) return false;
+
+      const clean = (v) => {
+        const n = Math.max(0, Math.floor(Number(v) || 0));
+        // En Android/Chrome, patrones excesivos pueden fallar: cap suave.
+        return Math.min(n, 200);
+      };
+
+      const p = Array.isArray(pattern)
+        ? pattern.map(clean).filter((n) => n > 0)
+        : clean(pattern);
+
+      // Reinicio (mejora consistencia en algunos dispositivos si se repite rápido).
       // @ts-ignore
-      navigator.vibrate(pattern);
+      navigator.vibrate(0);
+      // @ts-ignore
+      const ok = navigator.vibrate(p);
+      if (ok) _lastHapticAt = t;
+      return !!ok;
     } catch {
-      // Silencioso: no todos los navegadores soportan vibración.
+      return false;
     }
   }
 
