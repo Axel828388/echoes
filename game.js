@@ -65,8 +65,20 @@
         // This intentionally does NOT repeat on subsequent loads.
         const resetOnceKey = `${this.storageKey}__reset_once_2026_01`;
         if (!localStorage.getItem(resetOnceKey)) {
-          localStorage.removeItem(this.storageKey);
+          // Mark first, then wipe everything else (so it won't repeat).
           localStorage.setItem(resetOnceKey, "1");
+
+          /** @type {string[]} */
+          const keysToRemove = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (!k) continue;
+            if (k === resetOnceKey) continue;
+            keysToRemove.push(k);
+          }
+          for (const k of keysToRemove) {
+            localStorage.removeItem(k);
+          }
         }
 
         const raw = localStorage.getItem(this.storageKey);
